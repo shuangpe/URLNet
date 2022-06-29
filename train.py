@@ -252,7 +252,7 @@ with tf.Graph().as_default():
         checkpoint_dir = FLAGS["log.output_dir"] + "checkpoints/" 
         if not os.path.exists(checkpoint_dir): 
             os.makedirs(checkpoint_dir) 
-        checkpoint_prefix = checkpoint_dir + "model"
+        checkpoint_prefix = checkpoint_dir + "urlnet"
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=5) 
         
         sess.run(tf.global_variables_initializer())
@@ -297,5 +297,12 @@ with tf.Graph().as_default():
                   f.write("{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), dev_loss, dev_acc))
                 if step % FLAGS["log.checkpoint_every"] == 0 or idx == (nb_batches-1): 
                     if dev_loss < min_dev_loss: 
-                        path = saver.save(sess, checkpoint_prefix, global_step = step) 
-                        min_dev_loss = dev_loss     
+                        path = saver.save(sess, checkpoint_prefix, global_step = step)
+                        min_dev_loss = dev_loss
+
+                        graph = tf.get_default_graph()
+                        input_graph_def = graph.as_graph_def()
+                        output_graph_def = tf.graph_util.convert_variables_to_constants(
+                          sess, input_graph_def, [n.name for n in input_graph_def.node])
+                        with tf.gfile.GFile(f'{checkpoint_prefix}-{step}.pb', 'wb') as f:
+                          f.write(output_graph_def.SerializeToString())
